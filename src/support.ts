@@ -12,13 +12,13 @@ export function supportsVideoPictureInPicture(): boolean {
 }
 
 export function getSupportMessage(): string {
-  if (supportsDocumentPictureInPicture()) {
-    return "Document Picture-in-Picture is available. Floating mode can show live HTML, controls, and the camera preview together.";
-  }
-
   if (supportsVideoPictureInPicture()) {
-    return "Document Picture-in-Picture is unavailable here, so floating mode will use a canvas-rendered video Picture-in-Picture fallback.";
+    return "Video Picture-in-Picture is available. The teleprompter preview is rendered as a live video feed so it can be sent to PiP directly.";
   }
 
-  return "Picture-in-Picture is not supported in this browser. The main-page teleprompter preview will still work.";
+  if (supportsDocumentPictureInPicture()) {
+    return "Document Picture-in-Picture is available, but this version prioritizes a live video feed so the same preview can be used on iPhone-style video PiP paths.";
+  }
+
+  return "Picture-in-Picture is not supported in this browser. The live teleprompter feed will still work on the page.";
 }

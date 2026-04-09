@@ -271,6 +271,15 @@ input:focus {
   background: rgba(2, 6, 23, 0.7);
 }
 
+.feed-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 440px;
+  object-fit: cover;
+  background: #020617;
+}
+
 .teleprompter-surface {
   position: relative;
   width: 100%;
@@ -346,14 +355,6 @@ input:focus {
 .floating-document-body {
   margin: 0;
   background: #020617;
-}
-
-.hidden-pip-video {
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
 }
 
 @media (max-width: 1040px) {

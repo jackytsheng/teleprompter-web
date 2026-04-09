@@ -1,6 +1,6 @@
 # Floating Teleprompter
 
-A browser-based teleprompter built with React, TypeScript, and Vite. It supports local script editing, live preview, persistent settings, optional camera preview, and floating Picture-in-Picture teleprompter mode.
+A browser-based teleprompter built with React, TypeScript, and Vite. It renders the script into a live video feed so the preview itself can be used with video Picture-in-Picture.
 
 ## Setup
 
@@ -14,32 +14,29 @@ Open the local Vite URL in a desktop Chromium-based browser.
 ## What it includes
 
 - editable multi-line script area
-- live teleprompter preview
+- live teleprompter video feed preview
 - start, pause, reset, and manual nudge controls
 - speed, font size, background, text color, orientation, mirror, and guide-line settings
 - local persistence with `localStorage`
-- optional camera preview with `getUserMedia`
-- floating teleprompter mode
+- video Picture-in-Picture for the live feed
 
 ## Browser compatibility
 
-- Best experience: latest Chrome or Edge on desktop
-- Preferred path: Document Picture-in-Picture
-- Secondary path: classic video Picture-in-Picture using a canvas-rendered live teleprompter
-- Unsupported browsers: the main-page teleprompter still works and the app shows a support message instead of failing silently
+- Best experience: Safari on iPhone for testing video PiP, or Chrome/Edge on desktop
+- This version prioritizes video Picture-in-Picture instead of Document Picture-in-Picture
+- Unsupported browsers: the main-page live feed still works and the app shows a support message instead of failing silently
 
-## Floating fallback behavior
+## PiP behavior
 
-When Document Picture-in-Picture is unavailable, the app renders the teleprompter into a live canvas, captures that canvas as a media stream, and opens classic video Picture-in-Picture from a hidden `<video>` element.
+The app renders the teleprompter into a live canvas, captures that canvas as a media stream, and plays it through a visible `<video>` element. That same video feed is what enters Picture-in-Picture.
 
-This fallback keeps the floating experience working, but it is more limited than HTML-based Document PiP:
+This makes the preview path and the PiP path match, which is useful on iPhone Safari. A couple of practical notes:
 
-- the floating window is a synthetic video rather than a full DOM window
-- controls stay on the main page
-- layout is intentionally simpler
+- use Safari, not a Home Screen PWA, if you want the best chance of PiP working
+- the PiP window is a synthetic live video feed rather than a full DOM window
+- if the browser heavily suspends background page rendering, the live teleprompter feed may pause when the page is fully backgrounded
 
 ## Privacy notes
 
 - No backend is used
 - Scripts stay in browser storage only
-- Camera video stays local to the browser and is never uploaded

@@ -10,5 +10,4 @@ export interface TeleprompterSettings {
   orientation: Orientation;
   mirrored: boolean;
   guideLine: boolean;
-  cameraEnabled: boolean;
 }
