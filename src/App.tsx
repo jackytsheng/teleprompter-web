@@ -317,7 +317,11 @@ export default function App() {
       const drawHeight = isHorizontal ? height : width;
       const fontSize = settings.fontSize * 1.4;
       const lineHeight = fontSize * 1.34;
-      const maxTextWidth = Math.min(drawWidth - 92, 620);
+      const horizontalPadding = settings.feedMode === "portrait" ? 46 : 72;
+      const maxTextWidth =
+        settings.feedMode === "portrait"
+          ? Math.min(drawWidth - horizontalPadding * 2, 620)
+          : Math.min(drawWidth - horizontalPadding * 2, 1040);
 
       context.save();
       context.clearRect(0, 0, width, height);
