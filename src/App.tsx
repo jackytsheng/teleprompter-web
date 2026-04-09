@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS: TeleprompterSettings = {
   background: "black",
   textColor: "white",
   orientation: "horizontal",
+  feedMode: "portrait",
   mirrored: false,
   guideLine: true,
 };
@@ -33,6 +34,33 @@ const BACKGROUND_MAP: Record<TeleprompterSettings["background"], string> = {
   black: "#030712",
   white: "#f8fafc",
 };
+
+const BACKGROUND_OPTIONS: Array<{
+  value: TeleprompterSettings["background"];
+  label: string;
+}> = [
+  { value: "black", label: "Black" },
+  { value: "white", label: "White" },
+];
+
+const TEXT_COLOR_OPTIONS: Array<{
+  value: TeleprompterSettings["textColor"];
+  label: string;
+}> = [
+  { value: "white", label: "White" },
+  { value: "yellow", label: "Yellow" },
+  { value: "green", label: "Green" },
+  { value: "lightBlue", label: "Light blue" },
+  { value: "black", label: "Black" },
+];
+
+const FEED_MODE_OPTIONS: Array<{
+  value: TeleprompterSettings["feedMode"];
+  label: string;
+}> = [
+  { value: "portrait", label: "Portrait" },
+  { value: "landscape", label: "Landscape" },
+];
 
 function readStoredState(): { script: string; settings: TeleprompterSettings } {
   if (typeof window === "undefined") {
@@ -120,9 +148,9 @@ export default function App() {
 
   useEffect(() => {
     const canvas = document.createElement("canvas");
+    canvasRef.current = canvas;
     canvas.width = 720;
     canvas.height = 1280;
-    canvasRef.current = canvas;
 
     const stream = canvas.captureStream(30);
     feedStreamRef.current = stream;
@@ -141,6 +169,21 @@ export default function App() {
       canvasRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    if (settings.feedMode === "portrait") {
+      canvas.width = 720;
+      canvas.height = 1280;
+    } else {
+      canvas.width = 1280;
+      canvas.height = 720;
+    }
+  }, [settings.feedMode]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -214,6 +257,14 @@ export default function App() {
       setPipError(error instanceof Error ? error.message : "Unable to open Picture-in-Picture.");
     }
   }, []);
+
+  const jumpBySeconds = useCallback(
+    (seconds: number) => {
+      const pixelDelta = settings.speed * seconds;
+      setScrollOffset((current) => Math.max(0, current + pixelDelta));
+    },
+    [settings.speed],
+  );
 
   const closePictureInPicture = useCallback(async () => {
     setPipError("");
@@ -394,6 +445,12 @@ export default function App() {
             >
               Nudge Down
             </button>
+            <button type="button" className="secondary-button" onClick={() => jumpBySeconds(-10)}>
+              Back 10s
+            </button>
+            <button type="button" className="secondary-button" onClick={() => jumpBySeconds(10)}>
+              Forward 10s
+            </button>
             <button type="button" className="primary-button accent-button" onClick={() => void openPictureInPicture()}>
               Open PiP Feed
             </button>
@@ -438,38 +495,83 @@ export default function App() {
             </label>
 
             <label className="setting-card">
+              <span>Live view size</span>
+              <div className="pill-row" role="radiogroup" aria-label="Live view size">
+                {FEED_MODE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`color-pill ${settings.feedMode === option.value ? "active" : ""}`}
+                    aria-pressed={settings.feedMode === option.value}
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        feedMode: option.value,
+                      }))
+                    }
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </label>
+
+            <label className="setting-card">
               <span>Background</span>
-              <select
-                value={settings.background}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    background: event.target.value as TeleprompterSettings["background"],
-                  }))
-                }
-              >
-                <option value="black">Black</option>
-                <option value="white">White</option>
-              </select>
+              <div className="pill-row" role="radiogroup" aria-label="Background color">
+                {BACKGROUND_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`color-pill ${settings.background === option.value ? "active" : ""}`}
+                    aria-pressed={settings.background === option.value}
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        background: option.value,
+                      }))
+                    }
+                  >
+                    <span
+                      className="color-swatch"
+                      style={{
+                        background: BACKGROUND_MAP[option.value],
+                        borderColor: option.value === "white" ? "rgba(15, 23, 42, 0.18)" : "rgba(255,255,255,0.18)",
+                      }}
+                    />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </label>
 
             <label className="setting-card">
               <span>Text color</span>
-              <select
-                value={settings.textColor}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    textColor: event.target.value as TeleprompterSettings["textColor"],
-                  }))
-                }
-              >
-                <option value="white">White</option>
-                <option value="yellow">Yellow</option>
-                <option value="green">Green</option>
-                <option value="lightBlue">Light blue</option>
-                <option value="black">Black</option>
-              </select>
+              <div className="pill-row" role="radiogroup" aria-label="Text color">
+                {TEXT_COLOR_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`color-pill ${settings.textColor === option.value ? "active" : ""}`}
+                    aria-pressed={settings.textColor === option.value}
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        textColor: option.value,
+                      }))
+                    }
+                  >
+                    <span
+                      className="color-swatch"
+                      style={{
+                        background: TEXT_COLOR_MAP[option.value],
+                        borderColor: option.value === "white" ? "rgba(15, 23, 42, 0.18)" : "rgba(255,255,255,0.18)",
+                      }}
+                    />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </label>
 
             <label className="setting-card">
@@ -522,6 +624,9 @@ export default function App() {
           <p className="feedback">
             On iPhone, open this in Safari and use the live feed video for PiP. If you install it as a Home Screen app, PiP may not work the same way.
           </p>
+          <p className="feedback">
+            The 10-second skip buttons jump the teleprompter position using your current scroll speed. Live video streams do not have a normal seekable timeline.
+          </p>
         </section>
 
         <section className="panel preview-panel">
@@ -536,7 +641,7 @@ export default function App() {
           <div className="preview-frame">
             <video
               ref={previewVideoRef}
-              className="feed-video"
+              className={`feed-video ${settings.feedMode === "portrait" ? "portrait-feed" : "landscape-feed"}`}
               muted
               playsInline
               autoPlay

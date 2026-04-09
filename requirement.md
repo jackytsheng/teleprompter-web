@@ -1,51 +1,50 @@
 # requirement.md
 
 ## Project Title
-Browser-based Floating Teleprompter Website
+Browser-based Live Feed Teleprompter
 
 ## Goal
 Build a browser-based teleprompter website that allows a user to:
 1. write and edit a script directly in the page,
 2. configure teleprompter display settings,
-3. open the teleprompter in a floating always-on-top window,
-4. optionally show a live camera preview while reading,
+3. render the teleprompter as a live video feed,
+4. open that live feed in Picture-in-Picture when supported,
 5. keep the experience simple enough to run locally or deploy as a static web app.
 
 ---
 
 ## Product Summary
-The website should function as a teleprompter tool for creators who want to read a script while also using their camera.
+The website should function as a teleprompter tool for creators who want a readable script feed that can be pushed into browser PiP, including testing on iPhone Safari where video PiP is more relevant than Document PiP.
 
 The preferred experience is:
 - user opens the website,
 - pastes or edits a script,
 - adjusts speed and appearance,
-- clicks a button such as **Start Floating Teleprompter**,
-- teleprompter opens in a floating browser PiP-style window,
-- user can then switch to another app or browser tab and continue reading the script,
-- optionally, the floating window also shows a live camera preview.
+- chooses whether the live feed should be portrait or landscape,
+- clicks a button such as **Open PiP Feed**,
+- the teleprompter live feed opens in browser Picture-in-Picture,
+- user can keep reading from that live feed while using other apps if the browser/platform allows it.
 
 ---
 
 ## Core Technical Direction
 
 ### Preferred implementation
-Use **Document Picture-in-Picture** when available so the floating window can contain:
-- scrolling text,
-- custom layout,
-- optional guide line,
-- optional live camera preview,
-- custom controls.
+Use a `<canvas>`-based rendered teleprompter as the primary rendering path:
+- render the script into a canvas continuously,
+- convert the canvas output into a live `MediaStream`,
+- play that stream in a visible `<video>` element,
+- use `requestPictureInPicture()` on that video when supported.
 
-### Fallback implementation
-If Document Picture-in-Picture is not available:
-- fall back to a `<canvas>`-based rendered teleprompter,
-- stream the canvas into a hidden `<video>`,
-- use classic `requestPictureInPicture()` on that video.
+This is the preferred direction because the preview itself is a real live video feed, which aligns better with iPhone Safari PiP behavior.
+
+### Secondary implementation
+Document Picture-in-Picture is optional and not required for v1.
 
 ### Browser target
-Primary target:
-- latest Chromium-based desktop browsers:
+Primary targets:
+- Safari on iPhone for video PiP testing
+- latest desktop Chromium-based browsers:
   - Chrome
   - Edge
 
@@ -58,7 +57,8 @@ The app should work on:
 - HTTPS deployment for production.
 
 Note:
-- Any PiP-related APIs and camera access should assume secure context requirements.
+- PiP features depend on browser and platform support.
+- On mobile Safari, behavior may differ between Safari tabs and Home Screen web apps.
 
 ---
 
@@ -70,17 +70,17 @@ As a user, I want to:
 - edit it directly on the page,
 - keep formatting simple and readable.
 
-### Floating mode
+### Live feed mode
 As a user, I want to:
-- click a button to open the teleprompter in a floating always-on-top window,
-- keep reading while using another app,
-- continue seeing the script even when the main tab is not focused.
+- see the teleprompter rendered as a live video feed,
+- use that same feed as the source for PiP,
+- keep the page preview and the PiP preview visually consistent.
 
-### Camera usage
+### Picture-in-Picture
 As a user, I want to:
-- optionally turn on my camera,
-- see my live camera preview while reading,
-- be able to keep both camera preview and teleprompter visible in the floating mode if supported.
+- click a button to open the teleprompter live feed in PiP,
+- keep reading while using another app when the browser allows it,
+- close PiP from either browser controls or the page controls.
 
 ### Teleprompter controls
 As a user, I want to configure:
@@ -88,8 +88,20 @@ As a user, I want to configure:
 - background color,
 - text color,
 - text orientation,
+- portrait or landscape feed size,
 - mirrored mode,
 - guide line visibility.
+
+### Playback control
+As a user, I want to:
+- start scrolling,
+- pause scrolling,
+- reset position,
+- nudge position up or down,
+- jump backward or forward by 10 seconds.
+
+Important:
+- because the preview is a live generated feed rather than a prerecorded video file, “10 seconds” is an approximate position jump based on the current scroll speed, not true media seeking.
 
 ---
 
@@ -100,7 +112,7 @@ The main page must include:
 - a large editable text area for script input,
 - support for multi-line plain text,
 - support for paste,
-- live updates to the teleprompter preview.
+- live updates to the teleprompter preview feed.
 
 Nice to have:
 - auto-save to local storage,
@@ -123,14 +135,36 @@ Behavior:
 - speed changes should apply live without restarting.
 
 Suggested internal model:
-- pixels per second or lines per minute.
+- pixels per second.
 
-### 2.2 Background color
+### 2.2 Font size
+User can adjust text size.
+Suggested UI:
+- slider
+- numeric indicator
+
+Behavior:
+- changes should apply live to the rendered feed.
+
+### 2.3 Live feed size
+Available options:
+- portrait
+- landscape
+
+Behavior:
+- portrait should render the live feed in a tall aspect ratio suitable for phone-oriented use,
+- landscape should render the live feed in a wide aspect ratio suitable for desktop or horizontal use,
+- PiP should use the currently selected live feed aspect ratio.
+
+### 2.4 Background color
 Available options:
 - black
 - white
 
-### 2.3 Text color
+Suggested UI:
+- visible pill buttons rather than a dropdown.
+
+### 2.5 Text color
 Available options:
 - white
 - yellow
@@ -138,21 +172,16 @@ Available options:
 - light blue
 - black
 
-### 2.4 Text orientation
+Suggested UI:
+- visible pill buttons rather than a dropdown.
+
+### 2.6 Text orientation
 Available options:
 - normal horizontal
 - rotated -90 degrees
 - rotated 90 degrees
-- optional vertical layout if feasible
 
-Important:
-- if “vertical” is implemented, it should be a true readable vertical arrangement, not just broken CSS.
-- if true vertical writing is too complex or inconsistent, it is acceptable to support:
-  - horizontal
-  - rotate -90
-  - rotate 90
-
-### 2.5 Mirrored mode
+### 2.7 Mirrored mode
 User can toggle whether text is mirrored.
 Purpose:
 - useful when reading through a reflective teleprompter rig.
@@ -160,7 +189,7 @@ Purpose:
 Behavior:
 - mirrored mode should flip text horizontally.
 
-### 2.6 Indicative guide line
+### 2.8 Indicative guide line
 User can toggle a center guide line that marks the current reading position.
 
 Behavior:
@@ -169,110 +198,82 @@ Behavior:
 
 ---
 
-## 3. Floating Window Mode
+## 3. Picture-in-Picture Mode
 
-### 3.1 Start floating
+### 3.1 Open PiP
 The app must include a button:
-- **Start Floating Teleprompter**
+- **Open PiP Feed**
 
 Expected behavior:
-- opens teleprompter in floating PiP-style window,
-- floating window remains visible while user switches apps or tabs.
+- opens the live teleprompter video feed in browser PiP,
+- PiP remains visible while user switches context when the platform/browser permits it.
 
-### 3.2 Stop floating
-The app must include a way to close or stop floating mode.
+### 3.2 Close PiP
+The app must include a way to close or stop PiP mode.
 
 ### 3.3 Sync behavior
 State should stay synchronized between:
 - main page controls
-- floating window display
+- preview feed
+- PiP feed
 
 That means:
-- editing the script on the main page updates the floating teleprompter,
+- editing the script updates the visible preview feed,
 - speed changes update live,
 - appearance changes update live,
-- camera toggle updates live.
+- portrait/landscape mode updates live,
+- PiP reflects the same live feed source as the main preview.
 
-### 3.4 Floating layout
-The floating window should prioritize readability.
-
-Suggested layout options:
-- **Mode A: Text-only**
-  - full window used for teleprompter text
-- **Mode B: Text + camera**
-  - script takes most of the window
-  - small camera preview appears in a corner
-
-Camera preview should be:
-- movable if easy to implement,
-- otherwise pinned to top-right or bottom-right.
+### 3.4 Limitations
+The product should clearly acknowledge:
+- PiP support varies by browser,
+- Home Screen web apps on iPhone may behave differently from Safari tabs,
+- background execution policies may reduce or pause the live feed on some platforms.
 
 ---
 
-## 4. Camera Support
+## 4. Playback Behavior
 
-### 4.1 Enable camera
-The app must provide a control:
-- **Enable Camera**
-
-Behavior:
-- requests webcam permission from the browser,
-- shows local preview.
-
-### 4.2 Camera in floating mode
-If technically possible in the chosen browser/API path:
-- the floating window should show the live camera preview alongside the teleprompter text.
-
-If not possible in a specific fallback path:
-- show text-only in PiP and keep camera preview on the main page.
-
-### 4.3 Camera constraints
-Initial implementation can use:
-- default webcam,
-- no device switching required.
-
-Nice to have later:
-- camera device picker,
-- mirror camera preview independently from teleprompter mirror.
-
----
-
-## 5. Scrolling / Playback Behavior
-
-### 5.1 Start / pause
+### 4.1 Start / pause
 User can:
 - start scrolling,
 - pause scrolling,
 - resume scrolling.
 
-### 5.2 Reset
+### 4.2 Reset
 User can:
 - reset script scroll position to top.
 
-### 5.3 Manual adjustment
+### 4.3 Manual adjustment
 User can:
-- manually nudge position up/down,
-- or drag scroll position if easy to implement.
+- manually nudge position up/down.
 
-Nice to have:
-- step backward / forward by a fixed amount.
+### 4.4 Skip backward / forward
+User can:
+- jump backward by 10 seconds,
+- jump forward by 10 seconds.
 
-### 5.4 Smooth rendering
+Behavior:
+- these jumps should be implemented as scroll-position jumps based on the current speed,
+- the app does not need a true seekable media timeline.
+
+### 4.5 Smooth rendering
 Scrolling should appear smooth and readable.
 Use animation timing appropriate for browser rendering.
 
 ---
 
-## 6. Persistence
+## 5. Persistence
 Store user preferences locally in the browser:
 - script content
 - speed
+- font size
+- feed mode
 - background color
 - text color
 - orientation
 - mirrored toggle
 - guide line toggle
-- camera enabled preference if appropriate
 
 Implementation suggestion:
 - `localStorage`
@@ -281,29 +282,30 @@ No backend is required for v1.
 
 ---
 
-## 7. Non-Functional Requirements
+## 6. Non-Functional Requirements
 
-### 7.1 No backend required
+### 6.1 No backend required
 Version 1 should be fully client-side.
 
-### 7.2 Privacy
+### 6.2 Privacy
 - scripts should remain local in browser storage only,
-- camera feed should never be uploaded,
 - no analytics required unless explicitly added later.
 
-### 7.3 Performance
+### 6.3 Performance
 - should handle long scripts,
-- should scroll smoothly on desktop,
-- should not consume excessive CPU.
+- should scroll smoothly,
+- should not consume excessive CPU,
+- live feed generation should remain stable enough for local use and PiP testing.
 
-### 7.4 Accessibility
+### 6.4 Accessibility
 - controls should be labeled,
 - color selections should be obvious,
-- default font size should be readable.
+- default font size should be readable,
+- pill controls should have clear selected states.
 
 ---
 
-## 8. UX Requirements
+## 7. UX Requirements
 
 ### Main page layout
 The page should contain:
@@ -313,110 +315,106 @@ The page should contain:
   - Start
   - Pause
   - Reset
-  - Start Floating Teleprompter
-  - Enable Camera
+  - Nudge Up
+  - Nudge Down
+  - Back 10s
+  - Forward 10s
+  - Open PiP Feed
+  - Close PiP
 
 ### Suggested settings UI
 - speed slider
 - font size slider
-- background color toggle
-- text color buttons/dropdown
+- portrait / landscape pill selector
+- background color pill buttons
+- text color pill buttons
 - orientation dropdown
 - mirrored toggle
 - guide line toggle
-- camera toggle
 
 ### Preview
-The main page should show a live preview of the teleprompter before entering floating mode.
+The main page should show a live video feed preview of the teleprompter before entering PiP.
 
 ---
 
-## 9. Technical Acceptance Criteria
+## 8. Technical Acceptance Criteria
 
 The implementation is acceptable if:
 
 1. User can type/paste a script into the page.
-2. User can edit the script and see changes reflected in preview.
+2. User can edit the script and see changes reflected in the live feed preview.
 3. User can change:
    - rolling speed
+   - font size
+   - feed mode
    - background color
    - text color
    - orientation
    - mirrored mode
    - guide line visibility
 4. User can start and pause scrolling.
-5. User can open a floating teleprompter window in supported browsers.
-6. In supported browsers, the floating window remains visible while the user switches away from the page.
-7. Camera preview can be enabled and shown either:
-   - inside the floating window, or
-   - on the main page with a clearly documented limitation for fallback mode.
+5. User can jump backward and forward by 10 seconds worth of scroll position.
+6. User can open the live teleprompter feed in PiP in supported browsers.
+7. The preview feed and PiP feed stay visually synchronized because they use the same live video source.
 8. User preferences persist locally across reloads.
 9. Unsupported browsers show a graceful fallback or warning.
 
 ---
 
-## 10. Explicit Technical Questions to Solve During Build
+## 9. Explicit Technical Questions to Solve During Build
 
-The implementation should decide between these two rendering models:
+The implementation should decide between these rendering models:
 
-### Option A: Document PiP native HTML teleprompter
+### Option A: Canvas-generated live teleprompter video
 Pros:
-- simplest for custom layout
-- easiest to place text + guide line + camera preview together
-- easier to build live controls
+- aligns directly with video PiP
+- same feed can be used for preview and PiP
+- better fit for iPhone Safari testing
 
 Cons:
-- browser support is narrower
+- text layout must be rendered manually
+- live streams are not truly seekable like normal videos
 
-### Option B: Canvas-generated teleprompter video
+### Option B: Document PiP native HTML teleprompter
 Pros:
-- works with classic video PiP model
-- predictable rendered output
+- easier DOM layout for controls and text
+- easier to build rich floating UI
 
 Cons:
-- more complex
-- text rendering, layout, and controls are harder
-- camera + text composition must be drawn into canvas
-- all content is effectively generated at runtime as a synthetic live video feed
+- less aligned with iPhone Safari video PiP flow
+- browser support differs more across platforms
 
 ### Preferred decision
 Use:
-1. Document PiP first
-2. canvas/video PiP fallback second
+1. canvas-generated live video feed first
+2. optional Document PiP later only if needed
 
 ---
 
-## 11. Answer to Product Question: “Can this video be feed live?”
-Yes. The teleprompter content does not need to come from a prerecorded file.
+## 10. Answer to Product Question: “Can this video be feed live?”
+Yes.
 
-There are two valid implementation models:
+For this project, the teleprompter should be generated as a live feed:
+- render teleprompter text into a canvas,
+- convert the canvas output into a live media stream,
+- feed that stream to a video element,
+- use that video element as both the on-page preview and the PiP source.
 
-### Model 1: Live HTML in Document PiP
-- render script and camera preview directly as live DOM content
-- no video generation needed
-
-### Model 2: Runtime-generated live video
-- render teleprompter text (and optionally camera preview) into a canvas
-- convert canvas output into a live media stream
-- feed that stream to a video element
-- send that video element into Picture-in-Picture
-
-For this project, Model 1 is preferred when supported.
+This project does not require prerecorded video files.
 
 ---
 
-## 12. Suggested Tech Stack
+## 11. Suggested Tech Stack
 - React + TypeScript + Vite
-- CSS modules or Tailwind
+- CSS modules, plain CSS, or Tailwind
 - browser APIs:
-  - `navigator.mediaDevices.getUserMedia`
-  - `documentPictureInPicture.requestWindow` when supported
-  - `HTMLVideoElement.requestPictureInPicture` as fallback
+  - `HTMLCanvasElement.captureStream()`
+  - `HTMLVideoElement.requestPictureInPicture()`
   - `localStorage`
 
 ---
 
-## 13. Out of Scope for v1
+## 12. Out of Scope for v1
 Do not build these unless needed later:
 - cloud sync
 - user accounts
@@ -424,27 +422,31 @@ Do not build these unless needed later:
 - importing/exporting script files
 - remote control by phone
 - speech tracking / auto-scroll by voice
+- built-in camera preview
 - multiple camera devices
-- mobile browser support
 - full teleprompter hardware integration
 
 ---
 
-## 14. Deliverables
+## 13. Deliverables
 Codex should generate:
 1. the web app source code,
 2. a short README with setup instructions,
 3. a note explaining browser compatibility,
-4. a note describing how fallback mode behaves when Document PiP is unavailable.
+4. a note describing how the live feed PiP behavior works,
+5. a note describing browser/platform limitations, especially on iPhone.
 
 ---
 
-## 15. Implementation Notes for Codex
+## 14. Implementation Notes for Codex
 Please build the app with:
 - clean modular components,
 - a clear feature detection layer for PiP support,
 - graceful fallback behavior,
-- comments around the floating-window implementation,
 - no backend.
 
-Prioritize a working desktop Chromium version first.
+Prioritize:
+1. a working live video feed preview,
+2. working video PiP,
+3. iPhone Safari testing compatibility,
+4. simple, obvious controls for script reading.
