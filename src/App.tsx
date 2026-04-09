@@ -94,26 +94,52 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   const logicalLines = text.split("\n");
   const wrapped: string[] = [];
 
+  const isCjkCharacter = (value: string) =>
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(value);
+
+  const wrapByTokens = (tokens: string[]) => {
+    let currentLine = "";
+
+    for (const token of tokens) {
+      const candidate = `${currentLine}${token}`;
+      if (!currentLine || ctx.measureText(candidate).width <= maxWidth) {
+        currentLine = candidate;
+        continue;
+      }
+
+      wrapped.push(currentLine.trimEnd());
+      currentLine = token.trimStart();
+    }
+
+    wrapped.push(currentLine.trimEnd());
+  };
+
   for (const logicalLine of logicalLines) {
     if (!logicalLine.trim()) {
       wrapped.push("");
       continue;
     }
 
-    const words = logicalLine.split(/\s+/);
-    let currentLine = words[0] ?? "";
+    const hasCjk = isCjkCharacter(logicalLine);
 
-    for (let index = 1; index < words.length; index += 1) {
-      const candidate = `${currentLine} ${words[index]}`;
-      if (ctx.measureText(candidate).width <= maxWidth) {
-        currentLine = candidate;
-      } else {
-        wrapped.push(currentLine);
-        currentLine = words[index];
-      }
+    if (hasCjk) {
+      const Segmenter = (Intl as typeof Intl & {
+        Segmenter?: new (
+          locales?: string | string[],
+          options?: { granularity?: "grapheme" | "word" | "sentence" },
+        ) => { segment(input: string): Iterable<{ segment: string }> };
+      }).Segmenter;
+      const graphemes =
+        typeof Intl !== "undefined" && typeof Segmenter !== "undefined"
+          ? Array.from(new Segmenter("zh", { granularity: "grapheme" }).segment(logicalLine), (part) => part.segment)
+          : Array.from(logicalLine);
+
+      wrapByTokens(graphemes);
+      continue;
     }
 
-    wrapped.push(currentLine);
+    const words = logicalLine.match(/\S+\s*/g) ?? [logicalLine];
+    wrapByTokens(words);
   }
 
   return wrapped;
