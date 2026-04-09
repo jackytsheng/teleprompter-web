@@ -266,6 +266,66 @@ export default function App() {
     [settings.speed],
   );
 
+  useEffect(() => {
+    const session = navigator.mediaSession;
+    if (!session) {
+      return;
+    }
+
+    session.metadata = new MediaMetadata({
+      title: "Floating Teleprompter Feed",
+      artist: "Teleprompter",
+      album: settings.feedMode === "portrait" ? "Portrait Live Feed" : "Landscape Live Feed",
+    });
+    session.playbackState = isPlaying ? "playing" : "paused";
+
+    const trySetHandler = (
+      action: MediaSessionAction | "previousslide" | "nextslide",
+      handler: MediaSessionActionHandler | null,
+    ) => {
+      try {
+        session.setActionHandler(action as MediaSessionAction, handler);
+      } catch {
+        // Browsers expose different subsets of Media Session actions.
+      }
+    };
+
+    trySetHandler("play", () => setIsPlaying(true));
+    trySetHandler("pause", () => setIsPlaying(false));
+    trySetHandler("seekbackward", (details) => {
+      jumpBySeconds(-(details.seekOffset ?? 10));
+    });
+    trySetHandler("seekforward", (details) => {
+      jumpBySeconds(details.seekOffset ?? 10);
+    });
+
+    // Some PiP implementations expose slide/track navigation controls in addition
+    // to seek buttons. We map them to 5-second teleprompter jumps when available.
+    trySetHandler("previousslide", () => {
+      jumpBySeconds(-5);
+    });
+    trySetHandler("nextslide", () => {
+      jumpBySeconds(5);
+    });
+    trySetHandler("previoustrack", () => {
+      jumpBySeconds(-5);
+    });
+    trySetHandler("nexttrack", () => {
+      jumpBySeconds(5);
+    });
+
+    return () => {
+      trySetHandler("play", null);
+      trySetHandler("pause", null);
+      trySetHandler("seekbackward", null);
+      trySetHandler("seekforward", null);
+      trySetHandler("previousslide", null);
+      trySetHandler("nextslide", null);
+      trySetHandler("previoustrack", null);
+      trySetHandler("nexttrack", null);
+    };
+  }, [isPlaying, jumpBySeconds, settings.feedMode]);
+
   const closePictureInPicture = useCallback(async () => {
     setPipError("");
 
@@ -449,8 +509,14 @@ export default function App() {
             >
               Nudge Down
             </button>
+            <button type="button" className="secondary-button" onClick={() => jumpBySeconds(-5)}>
+              Back 5s
+            </button>
             <button type="button" className="secondary-button" onClick={() => jumpBySeconds(-10)}>
               Back 10s
+            </button>
+            <button type="button" className="secondary-button" onClick={() => jumpBySeconds(5)}>
+              Forward 5s
             </button>
             <button type="button" className="secondary-button" onClick={() => jumpBySeconds(10)}>
               Forward 10s
@@ -629,7 +695,10 @@ export default function App() {
             On iPhone, open this in Safari and use the live feed video for PiP. If you install it as a Home Screen app, PiP may not work the same way.
           </p>
           <p className="feedback">
-            The 10-second skip buttons jump the teleprompter position using your current scroll speed. Live video streams do not have a normal seekable timeline.
+            PiP skip controls are browser-supplied. This app registers 5-second and 10-second jump actions, but the exact buttons shown in the PiP window still depend on browser support.
+          </p>
+          <p className="feedback">
+            These skip controls jump the teleprompter position using your current scroll speed. The live video feed still does not have a normal seekable media timeline.
           </p>
         </section>
 
